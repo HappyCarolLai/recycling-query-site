@@ -1,7 +1,7 @@
 // 引入 Express 模組
 const express = require('express');
 const app = express();
-const port = 3000; // 定義伺服器運行的連接埠
+const port = 8080; // 定義伺服器運行的連接埠
 
 // 啟用 CORS，讓前端頁面可以向這個 API 請求資料
 const cors = require('cors');
