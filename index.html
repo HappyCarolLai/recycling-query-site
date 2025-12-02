@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗑️ 智慧回收分類查詢</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; padding: 20px; display: flex; justify-content: center; }
+        .container { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); max-width: 600px; width: 100%; }
+        h1 { color: #007bff; text-align: center; }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        select, input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #28a745; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; transition: background-color 0.3s; }
+        button:hover { background-color: #218838; }
+        #result { margin-top: 30px; padding: 15px; border-radius: 4px; border-left: 5px solid #007bff; background-color: #e9f7ff; }
+        .result-title { font-size: 1.5em; color: #007bff; margin-bottom: 10px; }
+        .result-type { font-size: 1.8em; font-weight: bold; color: #dc3545; /* 預設為紅色，稍後用 JS 改變 */ }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗑️ 縣市回收分類查詢</h1>
+        
+        <div class="input-group">
+            <label for="city-select">選擇縣市：</label>
+            <select id="city-select">
+                <option value="臺北市">臺北市</option>
+                <option value="高雄市">高雄市</option>
+                </select>
+        </div>
+
+        <div class="input-group">
+            <label for="item-input">輸入物品名稱 (例如：寶特瓶, 衛生紙)：</label>
+            <input type="text" id="item-input" placeholder="請輸入欲查詢的物品">
+        </div>
+
+        <button id="query-button">查詢分類</button>
+
+        <div id="result">
+            <p>請輸入物品並點擊查詢。</p>
+        </div>
+    </div>
+
+    <script>
+        // 確保後端伺服器運行在 localhost:3000
+const API_BASE_URL = 'http://localhost:3000';
+
+// 取得所有需要的 HTML 元素
+const citySelect = document.getElementById('city-select');
+const itemInput = document.getElementById('item-input');
+const queryButton = document.getElementById('query-button');
+const resultDiv = document.getElementById('result');
+
+// 根據分類結果設定顯示樣式
+function getStyle(disposalType) {
+    if (disposalType.includes('資源回收')) {
+        return { color: '#007bff', borderColor: '#007bff', background: '#e9f7ff' };
+    } else if (disposalType.includes('一般垃圾')) {
+        return { color: '#dc3545', borderColor: '#dc3545', background: '#fff0f3' };
+    } else if (disposalType.includes('廚餘')) {
+        return { color: '#ffc107', borderColor: '#ffc107', background: '#fff9e6' };
+    } else {
+        return { color: '#333', borderColor: '#ccc', background: '#f4f4f4' };
+    }
+}
+
+
+// 處理查詢按鈕點擊事件
+queryButton.addEventListener('click', async () => {
+    const city = citySelect.value;
+    const item = itemInput.value.trim(); // 移除輸入前後的空白
+
+    if (!item) {
+        resultDiv.innerHTML = '<p style="color: red;">請務必輸入物品名稱！</p>';
+        return;
+    }
+
+    resultDiv.innerHTML = '<p>正在查詢中...</p>';
+
+    // 構建 API 完整的 URL，並對物品名稱進行編碼，確保中文不亂碼
+    const url = `${API_BASE_URL}/api/query?city=${city}&item=${encodeURIComponent(item)}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        const style = getStyle(data.disposal_type);
+
+        if (response.ok) {
+            // 查詢成功 (HTTP 200)
+            resultDiv.style.borderColor = style.borderColor;
+            resultDiv.style.backgroundColor = style.background;
+
+            resultDiv.innerHTML = `
+                <div class="result-title">【${city}】「${data.item_name}」分類結果</div>
+                <p><strong>物品類別：</strong>${data.item_category || '無'}</p>
+                <p><strong>分類：</strong><span class="result-type" style="color: ${style.color};">${data.disposal_type}</span></p>
+                <hr>
+                <p><strong>處理說明：</strong> ${data.disposal_details}</p>
+            `;
+        } else {
+            // 查詢失敗或未找到 (HTTP 404/400/500)
+            resultDiv.style.borderColor = '#dc3545';
+            resultDiv.style.backgroundColor = '#fff0f3';
+            resultDiv.innerHTML = `<p style="color: #dc3545;"><strong>查詢失敗：</strong> ${data.disposal_details}</p>`;
+        }
+    } catch (error) {
+        // 網路錯誤，例如後端伺服器未啟動
+        console.error('Fetch 錯誤:', error);
+        resultDiv.style.borderColor = '#333';
+        resultDiv.style.backgroundColor = '#f4f4f4';
+        resultDiv.innerHTML = `<p style="color: #333;">❌ 無法連線到查詢服務，請確認伺服器已啟動。</p>`;
+    }
+});
+    </script>
+</body>
+</html>
